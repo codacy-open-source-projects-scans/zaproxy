@@ -24,6 +24,7 @@ Scan rules:
 10000   Password Autocomplete in browser [Deprecated]
 10001   Secure page browser cache [Deprecated]
 10003   Retire JS
+10004   Technology Detection
 
 10009   In Page Banner Info Leak
 10010   Cookie set without HttpOnly flag
@@ -103,6 +104,7 @@ Scan rules:
 10112   Session Handling Detection (info)
 10113   Verification Detection (info)
 10114   Same Origin Method Execution (SOME)
+10115   Script served from malicious polyfill.io domain
 
 10200   Beast (via HTTPS Info Extension) [Deprecated]
 10201   Crime (via HTTPS Info Extension) [Deprecated]
