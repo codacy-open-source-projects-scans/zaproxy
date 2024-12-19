@@ -46,7 +46,7 @@ public abstract class PluginPassiveScanner extends Enableable
      * The (base) configuration key used to saved the configurations of a passive scanner, ID, alert
      * threshold and enabled state.
      */
-    private static final String PSCANS_KEY = PassiveScanParam.PASSIVE_SCANS_BASE_KEY + ".pscanner";
+    private static final String PSCANS_KEY = "pscans.pscanner";
 
     /** The configuration key used to save/load the ID of a passive scanner. */
     private static final String ID_KEY = "id";
@@ -92,17 +92,6 @@ public abstract class PluginPassiveScanner extends Enableable
 
     public void setHelper(PassiveScanData passiveScanData) {
         this.passiveScanData = passiveScanData;
-    }
-
-    /**
-     * <strong>Note:</strong> This method should no longer need to be overridden, the functionality
-     * provided by the {@code parent} can be obtained directly with {@link #newAlert()} and {@link
-     * #addHistoryTag(String)}.
-     */
-    @Override
-    @SuppressWarnings("deprecation")
-    public void setParent(PassiveScanThread parent) {
-        // Nothing to do.
     }
 
     /**
@@ -386,16 +375,12 @@ public abstract class PluginPassiveScanner extends Enableable
         return passiveScanData;
     }
 
-    private PassiveScanTaskHelper taskHelper;
+    private PassiveScanActions actions;
 
+    /** <strong>Note:</strong> Not part of the public API. */
     @Override
-    public void setTaskHelper(PassiveScanTaskHelper helper) {
-        this.taskHelper = helper;
-    }
-
-    @Override
-    public PassiveScanTaskHelper getTaskHelper() {
-        return this.taskHelper;
+    public void setPassiveScanActions(PassiveScanActions actions) {
+        this.actions = actions;
     }
 
     /**
@@ -417,7 +402,7 @@ public abstract class PluginPassiveScanner extends Enableable
      * @since 2.12.0
      */
     protected void addHistoryTag(String tag) {
-        this.taskHelper.addHistoryTag(passiveScanData.getMessage().getHistoryRef(), tag);
+        this.actions.addHistoryTag(passiveScanData.getMessage().getHistoryRef(), tag);
     }
 
     /**
@@ -676,7 +661,7 @@ public abstract class PluginPassiveScanner extends Enableable
 
         /** Raises the alert with specified data. */
         public void raise() {
-            plugin.taskHelper.raiseAlert(message.getHistoryRef(), build());
+            plugin.actions.raiseAlert(message.getHistoryRef(), build());
             Stats.incCounter("stats.pscan." + plugin.getPluginId() + ".alerts");
         }
     }

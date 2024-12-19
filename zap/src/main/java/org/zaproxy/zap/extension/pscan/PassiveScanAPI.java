@@ -37,6 +37,7 @@ import org.zaproxy.zap.extension.api.ApiResponseSet;
 import org.zaproxy.zap.extension.api.ApiView;
 import org.zaproxy.zap.utils.ApiUtils;
 
+@SuppressWarnings("removal")
 @Deprecated(since = "2.16.0", forRemoval = true)
 public class PassiveScanAPI extends ApiImplementor {
 
@@ -113,9 +114,6 @@ public class PassiveScanAPI extends ApiImplementor {
     public ApiResponse handleApiAction(String name, JSONObject params) throws ApiException {
         switch (name) {
             case ACTION_SET_ENABLED:
-                boolean enabled = getParam(params, PARAM_ENABLED, false);
-
-                extension.setPassiveScanEnabled(enabled);
                 break;
             case ACTION_SET_SCAN_ONLY_IN_SCOPE:
                 extension
