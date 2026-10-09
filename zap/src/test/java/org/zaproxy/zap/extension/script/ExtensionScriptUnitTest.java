@@ -23,6 +23,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.security.InvalidParameterException;
+import java.util.Iterator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,71 @@ class ExtensionScriptUnitTest {
     @AfterEach
     void cleanUp() {
         Constant.messages = null;
+    }
+
+    @Test
+    void shouldReturnThreadSafeScriptTypesCollection() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        extensionScript.hook(mock());
+        Iterator<ScriptType> it = extensionScript.getScriptTypes().iterator();
+        extensionScript.registerScriptType(new ScriptType("type", "i18n.type", null, true));
+
+        // When / Then
+        assertDoesNotThrow(it::next);
+    }
+
+    @Test
+    void shouldHandleRegistrationOfNullScriptType() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        ScriptType scriptType = null;
+
+        // When / Then
+        assertDoesNotThrow(() -> extensionScript.registerScriptType(scriptType));
+    }
+
+    @Test
+    void shouldHandleRegistrationOfScriptTypeWithNullName() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        ScriptType scriptType = new ScriptType(null, "i18n.type", null, false);
+
+        // When / Then
+        assertDoesNotThrow(() -> extensionScript.registerScriptType(scriptType));
+    }
+
+    @Test
+    void shouldHandleRemovalOfNullScriptType() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        ScriptType scriptType = null;
+
+        // When / Then
+        assertDoesNotThrow(() -> extensionScript.removeScriptType(scriptType));
+    }
+
+    @Test
+    void shouldHandleRemovalOfScriptTypeWithNullName() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        ScriptType scriptType = new ScriptType(null, "i18n.type", null, false);
+
+        // When / Then
+        assertDoesNotThrow(() -> extensionScript.removeScriptType(scriptType));
+    }
+
+    @Test
+    void shouldGetNullScriptTypeFromNullName() {
+        // Given
+        ExtensionScript extensionScript = new ExtensionScript();
+        String scriptTypeName = null;
+
+        // When
+        ScriptType type = extensionScript.getScriptType(scriptTypeName);
+
+        // Then
+        assertThat(type, is(nullValue()));
     }
 
     @Test

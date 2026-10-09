@@ -16,7 +16,6 @@
       ":addOns:database",
       ":addOns:diff",
       ":addOns:directorylistv1",
-      ":addOns:domxss",
       ":addOns:encoder",
       ":addOns:exim",
       ":addOns:formhandler",
@@ -28,11 +27,13 @@
 	  ":addOns:httpsInfo",
 	  ":addOns:insights",
       ":addOns:invoke",
+	  ":addOns:mcp",
       ":addOns:network",
       ":addOns:oast",
       ":addOns:onlineMenu",
       ":addOns:openapi",
       ":addOns:postman",
+      ":addOns:params",
       ":addOns:plugnhack",
       ":addOns:pscan",
       ":addOns:pscanrules",
@@ -50,7 +51,7 @@
       ":addOns:selenium",
       ":addOns:soap",
       ":addOns:spider",
-      ":addOns:spiderAjax",
+	  ":addOns:sse",
       ":addOns:tips",
       ":addOns:webdrivers:webdriverlinux",
       ":addOns:webdrivers:webdrivermacos",
@@ -67,5 +68,8 @@
   },
   {
     "cloneUrl": "https://github.com/zaproxy/zap-hud.git"
+  },
+  {
+    "cloneUrl": "https://github.com/zaproxy-addons/ptk.git"
   }
 ]

@@ -32,11 +32,17 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -98,6 +104,19 @@ class UserUnitTest {
         mockedExtension = Mockito.mock(ExtensionAuthentication.class);
         when(mockedExtension.getAuthenticationMethodTypeForIdentifier(anyInt()))
                 .thenReturn(mockedType);
+    }
+
+    private final List<AuthenticationListener> registeredListeners = new ArrayList<>();
+
+    private void registerListener(AuthenticationListener listener) {
+        registeredListeners.add(listener);
+        User.addAuthenticationListener(listener);
+    }
+
+    @AfterEach
+    void tearDown() {
+        registeredListeners.forEach(User::removeAuthenticationListener);
+        registeredListeners.clear();
     }
 
     @Test
@@ -223,6 +242,58 @@ class UserUnitTest {
     }
 
     @Test
+    void shouldNotAuthenticateWhenInterruptedBeforeCall() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        Thread.currentThread().interrupt();
+        // When
+        try {
+            user.processMessageToMatchUser(mock());
+        } finally {
+            Thread.interrupted();
+        }
+        // Then
+        verify(user, never()).authenticate();
+    }
+
+    @Test
+    void shouldNotAuthenticateWhenInterruptedWhileWaitingForLock() throws Exception {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(true).when(user).requiresAuthentication();
+
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+
+        Thread lockHolder =
+                new Thread(
+                        () -> {
+                            synchronized (user) {
+                                lockAcquired.countDown();
+                                try {
+                                    releaseLock.await();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
+                        });
+        lockHolder.start();
+        lockAcquired.await();
+
+        Thread caller = new Thread(() -> user.processMessageToMatchUser(mock()));
+        caller.start();
+        while (caller.getState() != Thread.State.BLOCKED) {
+            Thread.sleep(50);
+        }
+        caller.interrupt();
+        releaseLock.countDown();
+        caller.join();
+
+        // Then
+        verify(user, never()).authenticate();
+    }
+
+    @Test
     void shouldNotRequireAuthenticationAfterAuthentication() {
         // Given
         User user = spy(new User(CONTEXT_ID, USER_NAME));
@@ -231,5 +302,95 @@ class UserUnitTest {
         user.authenticate();
         // Then
         assertFalse(user.requiresAuthentication());
+    }
+
+    @Test
+    void shouldNotifyListenerOnAuthenticationFailure() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(true).when(user).requiresAuthentication();
+        doNothing().when(user).authenticate();
+        AuthenticationListener listener = mock(AuthenticationListener.class);
+        registerListener(listener);
+        HttpMessage message = mock(HttpMessage.class);
+        // When
+        user.processMessageToMatchUser(message);
+        // Then
+        verify(listener).onAuthenticationRequestStart(user, message);
+        verify(listener).onAuthenticationRequestFailure(user, message);
+        verify(listener, never()).onAuthenticationRequestSuccess(user, message);
+    }
+
+    @Test
+    void shouldNotifyListenerOnAuthenticationSuccess() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(mockedContext).when(user).getContext();
+        doReturn(true, false).when(user).requiresAuthentication();
+        doNothing().when(user).authenticate();
+        AuthenticationListener listener = mock(AuthenticationListener.class);
+        registerListener(listener);
+        HttpMessage message = mock(HttpMessage.class);
+        // When
+        user.processMessageToMatchUser(message);
+        // Then
+        verify(listener).onAuthenticationRequestStart(user, message);
+        verify(listener).onAuthenticationRequestSuccess(user, message);
+        verify(listener, never()).onAuthenticationRequestFailure(user, message);
+    }
+
+    @Test
+    void shouldNotNotifyListenersWhenAuthenticationNotRequired() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(mockedContext).when(user).getContext();
+        doReturn(false).when(user).requiresAuthentication();
+        AuthenticationListener listener = mock(AuthenticationListener.class);
+        registerListener(listener);
+        // When
+        user.processMessageToMatchUser(mock(HttpMessage.class));
+        // Then
+        verify(listener, never()).onAuthenticationRequestStart(any(), any());
+        verify(listener, never()).onAuthenticationRequestSuccess(any(), any());
+        verify(listener, never()).onAuthenticationRequestFailure(any(), any());
+    }
+
+    @Test
+    void shouldNotifyAllRegisteredListenersOnAuthenticationFailure() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(true).when(user).requiresAuthentication();
+        doNothing().when(user).authenticate();
+        AuthenticationListener listenerA = mock(AuthenticationListener.class);
+        AuthenticationListener listenerB = mock(AuthenticationListener.class);
+        registerListener(listenerA);
+        registerListener(listenerB);
+        HttpMessage message = mock(HttpMessage.class);
+        // When
+        user.processMessageToMatchUser(message);
+        // Then
+        verify(listenerA).onAuthenticationRequestFailure(user, message);
+        verify(listenerB).onAuthenticationRequestFailure(user, message);
+    }
+
+    @Test
+    void shouldContinueNotifyingListenersWhenOneListenerThrows() {
+        // Given
+        User user = spy(new User(CONTEXT_ID, USER_NAME));
+        doReturn(true).when(user).requiresAuthentication();
+        doNothing().when(user).authenticate();
+        AuthenticationListener throwingListener = mock(AuthenticationListener.class);
+        doThrow(new RuntimeException("boom"))
+                .when(throwingListener)
+                .onAuthenticationRequestFailure(any(), any());
+        AuthenticationListener listener = mock(AuthenticationListener.class);
+        registerListener(throwingListener);
+        registerListener(listener);
+        HttpMessage message = mock(HttpMessage.class);
+        // When
+        user.processMessageToMatchUser(message);
+        // Then
+        verify(throwingListener).onAuthenticationRequestFailure(user, message);
+        verify(listener).onAuthenticationRequestFailure(user, message);
     }
 }

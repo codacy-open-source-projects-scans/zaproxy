@@ -3,7 +3,7 @@ env:
   contexts:
   - name: "Chrome Headless Test"
     urls:
-    - "https://demo.owasp-juice.shop"
+    - "https://www.zaproxy.com"
   parameters:
     failOnError: true
     failOnWarning: true
@@ -16,10 +16,10 @@ jobs:
   tests:
   - name: "At least one URL found"
     onFail: "WARN"
-    statistic: "spiderAjax.urls.added"
+    statistic: "stats.client.spider.urls"
     site: ""
     operator: ">="
-    value: 20
+    value: 1
     type: "stats"
-  name: "spiderAjax"
-  type: "spiderAjax"
+  name: "spiderClient"
+  type: "spiderClient"

@@ -35,10 +35,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.script.Invocable;
 import javax.script.ScriptContext;
@@ -115,9 +115,24 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
 
     protected static final String SCRIPT_NAME_ATT = "zap.script.name";
 
+    /**
+     * @deprecated (2.18.0) Replaced by scripts add-on.
+     */
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public static final String TYPE_HTTP_SENDER = "httpsender";
+
+    /**
+     * @deprecated (2.18.0) Replaced by scripts add-on.
+     */
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public static final String TYPE_PROXY = "proxy";
+
     public static final String TYPE_STANDALONE = "standalone";
+
+    /**
+     * @deprecated (2.18.0) Replaced by scripts add-on.
+     */
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public static final String TYPE_TARGETED = "targeted";
 
     private ScriptEngineManager mgr = new ScriptEngineManager();
@@ -126,9 +141,7 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
 
     private ScriptTreeModel treeModel = null;
     private List<ScriptEngineWrapper> engineWrappers = new ArrayList<>();
-    private Map<String, ScriptType> typeMap = new HashMap<>();
-    private ProxyListenerScript proxyListener = null;
-    private HttpSenderScriptListener httpSenderScriptListener;
+    private Map<String, ScriptType> typeMap = new ConcurrentHashMap<>();
 
     private List<ScriptEventListener> listeners = new ArrayList<>();
     private MultipleWriters writers = new MultipleWriters();
@@ -191,34 +204,14 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
 
         this.registerScriptType(
                 new ScriptType(
-                        TYPE_PROXY,
-                        "script.type.proxy",
-                        createIcon("/resource/icon/16/script-proxy.png"),
-                        true));
-        this.registerScriptType(
-                new ScriptType(
                         TYPE_STANDALONE,
                         "script.type.standalone",
                         createIcon("/resource/icon/16/script-standalone.png"),
                         false,
                         new String[] {ScriptType.CAPABILITY_APPEND}));
-        this.registerScriptType(
-                new ScriptType(
-                        TYPE_TARGETED,
-                        "script.type.targeted",
-                        createIcon("/resource/icon/16/script-targeted.png"),
-                        false));
-        this.registerScriptType(
-                new ScriptType(
-                        TYPE_HTTP_SENDER,
-                        "script.type.httpsender",
-                        createIcon("/resource/icon/16/script-httpsender.png"),
-                        true));
 
         extensionHook.addSessionListener(new ClearScriptVarsOnSessionChange());
 
-        extensionHook.addProxyListener(this.getProxyListener());
-        extensionHook.addHttpSenderListener(getHttpSenderScriptListener());
         extensionHook.addOptionsParamSet(getScriptParam());
 
         extensionHook.addCommandLine(getCommandLineArguments());
@@ -249,20 +242,6 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
             optionsScriptPanel = new OptionsScriptPanel(this);
         }
         return optionsScriptPanel;
-    }
-
-    private ProxyListenerScript getProxyListener() {
-        if (this.proxyListener == null) {
-            this.proxyListener = new ProxyListenerScript(this);
-        }
-        return this.proxyListener;
-    }
-
-    private HttpSenderScriptListener getHttpSenderScriptListener() {
-        if (this.httpSenderScriptListener == null) {
-            this.httpSenderScriptListener = new HttpSenderScriptListener(this);
-        }
-        return this.httpSenderScriptListener;
     }
 
     public List<String> getScriptingEngines() {
@@ -546,11 +525,17 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
      *
      * <p>The script is added to the tree of scripts and its scripts/templates loaded, if any.
      *
+     * <p>The call to this method has no effect if the given type or its name is null.
+     *
      * @param type the new type of script
      * @throws InvalidParameterException if a script type with same name is already registered
      * @see #removeScriptType(ScriptType)
      */
     public void registerScriptType(ScriptType type) {
+        if (type == null || type.getName() == null) {
+            return;
+        }
+
         if (typeMap.containsKey(type.getName())) {
             throw new InvalidParameterException("ScriptType already registered: " + type.getName());
         }
@@ -623,6 +608,10 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
      * @see #registerScriptType(ScriptType)
      */
     public void removeScriptType(ScriptType type) {
+        if (type == null || type.getName() == null) {
+            return;
+        }
+
         ScriptType scriptType = typeMap.remove(type.getName());
         if (scriptType != null) {
             getTreeModel().removeType(scriptType);
@@ -630,6 +619,9 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
     }
 
     public ScriptType getScriptType(String name) {
+        if (name == null) {
+            return null;
+        }
         return this.typeMap.get(name);
     }
 
@@ -1638,8 +1630,11 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
      * @param script the script to invoke.
      * @param msg the HTTP message to process.
      * @since 2.2.0
+     * @deprecated (2.18.0) Replaced by scripts add-on.
      * @see #getInterface(ScriptWrapper, Class)
      */
+    @SuppressWarnings("removal")
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public void invokeTargetedScript(ScriptWrapper script, HttpMessage msg) {
         validateScriptType(script, TYPE_TARGETED);
 
@@ -1741,8 +1736,11 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
      * @param request {@code true} if processing the request, {@code false} otherwise.
      * @return {@code true} if the request should be forward to the server, {@code false} otherwise.
      * @since 2.2.0
+     * @deprecated (2.18.0) Replaced by scripts add-on.
      * @see #getInterface(ScriptWrapper, Class)
      */
+    @SuppressWarnings("removal")
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public boolean invokeProxyScript(ScriptWrapper script, HttpMessage msg, boolean request) {
         validateScriptType(script, TYPE_PROXY);
 
@@ -1787,8 +1785,11 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
      * @param sender the sender of the given {@code HttpMessage}.
      * @param request {@code true} if processing the request, {@code false} otherwise.
      * @since 2.4.1
+     * @deprecated (2.18.0) Replaced by scripts add-on.
      * @see #getInterface(ScriptWrapper, Class)
      */
+    @SuppressWarnings("removal")
+    @Deprecated(since = "2.18.0", forRemoval = true)
     public void invokeSenderScript(
             ScriptWrapper script,
             HttpMessage msg,

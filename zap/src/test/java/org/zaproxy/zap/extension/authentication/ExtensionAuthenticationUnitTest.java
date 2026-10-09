@@ -80,6 +80,7 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
         Context context = new Context(null, 0);
         String loggedInIndicator = "logged in";
         String loggedOutIndicator = "logged out";
+        String pollMethod = "Method";
         String pollUrl = "https://www.example.com/poll";
         String pollData = "example-poll-data";
         String pollHeaders = "aaa : bbb\\Nccc : ddd";
@@ -87,15 +88,16 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
 
         FormBasedAuthenticationMethodType type = new FormBasedAuthenticationMethodType();
         FormBasedAuthenticationMethod method = type.createAuthenticationMethod(0);
-        method.setAuthCheckingStrategy(AuthCheckingStrategy.POLL_URL);
-        method.setPollUrl(pollUrl);
-        method.setPollData(pollData);
-        method.setPollHeaders(pollHeaders);
-        method.setPollFrequencyUnits(AuthPollFrequencyUnits.REQUESTS);
-        method.setPollFrequency(pollFreq);
-        method.setLoggedInIndicatorPattern(loggedInIndicator);
-        method.setLoggedOutIndicatorPattern(loggedOutIndicator);
         context.setAuthenticationMethod(method);
+        context.getVerificationMethod().setAuthCheckingStrategy(AuthCheckingStrategy.POLL_URL);
+        context.getVerificationMethod().setPollMethod(pollMethod);
+        context.getVerificationMethod().setPollUrl(pollUrl);
+        context.getVerificationMethod().setPollData(pollData);
+        context.getVerificationMethod().setPollHeaders(pollHeaders);
+        context.getVerificationMethod().setPollFrequencyUnits(AuthPollFrequencyUnits.REQUESTS);
+        context.getVerificationMethod().setPollFrequency(pollFreq);
+        context.getVerificationMethod().setLoggedInIndicatorPattern(loggedInIndicator);
+        context.getVerificationMethod().setLoggedOutIndicatorPattern(loggedOutIndicator);
         Configuration config = new ZapXmlConfiguration();
 
         // When
@@ -106,6 +108,9 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
         assertThat(
                 config.getString(AuthenticationMethod.CONTEXT_CONFIG_AUTH_STRATEGY),
                 is(AuthCheckingStrategy.POLL_URL.name()));
+        assertThat(
+                config.getString(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_METHOD),
+                is(pollMethod));
         assertThat(
                 config.getString(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_URL), is(pollUrl));
         assertThat(
@@ -131,6 +136,7 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
         Context context = new Context(null, 0);
         String loggedInIndicator = "logged in";
         String loggedOutIndicator = "logged out";
+        String pollMethod = "Method";
         String pollUrl = "https://www.example.com/poll";
         String pollData = "example-poll-data";
         String pollHeaders = "aaa : bbb\\Nccc : ddd";
@@ -141,6 +147,7 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
         config.setProperty(
                 AuthenticationMethod.CONTEXT_CONFIG_AUTH_STRATEGY,
                 AuthCheckingStrategy.POLL_URL.name());
+        config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_METHOD, pollMethod);
         config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_URL, pollUrl);
         config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_DATA, pollData);
         config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_HEADERS, pollHeaders);
@@ -156,20 +163,28 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
 
         // When
         extensionAuthentication.importContextData(context, config);
-        AuthenticationMethod method = context.getAuthenticationMethod();
 
         // Then
         assertThat(
-                method.getClass().getCanonicalName(),
+                context.getAuthenticationMethod().getClass().getCanonicalName(),
                 is(FormBasedAuthenticationMethod.class.getCanonicalName()));
-        assertThat(method.getAuthCheckingStrategy(), is(AuthCheckingStrategy.POLL_URL));
-        assertThat(method.getPollUrl(), is(pollUrl));
-        assertThat(method.getPollData(), is(pollData));
-        assertThat(method.getPollHeaders(), is(pollHeaders));
-        assertThat(method.getPollFrequencyUnits(), is(AuthPollFrequencyUnits.REQUESTS));
-        assertThat(method.getPollFrequency(), is(pollFreq));
-        assertThat(method.getLoggedInIndicatorPattern().toString(), is(loggedInIndicator));
-        assertThat(method.getLoggedOutIndicatorPattern().toString(), is(loggedOutIndicator));
+        assertThat(
+                context.getVerificationMethod().getAuthCheckingStrategy(),
+                is(AuthCheckingStrategy.POLL_URL));
+        assertThat(context.getVerificationMethod().getPollMethod(), is(pollMethod));
+        assertThat(context.getVerificationMethod().getPollUrl(), is(pollUrl));
+        assertThat(context.getVerificationMethod().getPollData(), is(pollData));
+        assertThat(context.getVerificationMethod().getPollHeaders(), is(pollHeaders));
+        assertThat(
+                context.getVerificationMethod().getPollFrequencyUnits(),
+                is(AuthPollFrequencyUnits.REQUESTS));
+        assertThat(context.getVerificationMethod().getPollFrequency(), is(pollFreq));
+        assertThat(
+                context.getVerificationMethod().getLoggedInIndicatorPattern().toString(),
+                is(loggedInIndicator));
+        assertThat(
+                context.getVerificationMethod().getLoggedOutIndicatorPattern().toString(),
+                is(loggedOutIndicator));
     }
 
     @Test
@@ -189,14 +204,44 @@ class ExtensionAuthenticationUnitTest extends WithConfigsTest {
 
         // When
         extensionAuthentication.importContextData(context, config);
-        AuthenticationMethod method = context.getAuthenticationMethod();
 
         // Then
         assertThat(
-                method.getClass().getCanonicalName(),
+                context.getAuthenticationMethod().getClass().getCanonicalName(),
                 is(FormBasedAuthenticationMethod.class.getCanonicalName()));
-        assertThat(method.getAuthCheckingStrategy(), is(AuthCheckingStrategy.EACH_RESP));
-        assertThat(method.getLoggedInIndicatorPattern().toString(), is(loggedInIndicator));
-        assertThat(method.getLoggedOutIndicatorPattern().toString(), is(loggedOutIndicator));
+        assertThat(
+                context.getVerificationMethod().getAuthCheckingStrategy(),
+                is(AuthCheckingStrategy.EACH_RESP));
+        assertThat(
+                context.getVerificationMethod().getLoggedInIndicatorPattern().toString(),
+                is(loggedInIndicator));
+        assertThat(
+                context.getVerificationMethod().getLoggedOutIndicatorPattern().toString(),
+                is(loggedOutIndicator));
+    }
+
+    @Test
+    void shouldImportContextWithPollUrlButNoStrategyAsPollUrl() throws ConfigurationException {
+        // Given
+        Context context = new Context(null, 0);
+        String pollUrl = "https://www.example.com/poll";
+        String loggedInIndicator = "logged in";
+
+        Configuration config = new ZapXmlConfiguration();
+        config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_TYPE, 2);
+        config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_POLL_URL, pollUrl);
+        config.setProperty(AuthenticationMethod.CONTEXT_CONFIG_AUTH_LOGGEDIN, loggedInIndicator);
+
+        ExtensionHook hook = new ExtensionHook(Model.getSingleton(), null);
+        extensionAuthentication.hook(hook);
+
+        // When
+        extensionAuthentication.importContextData(context, config);
+
+        // Then
+        assertThat(
+                context.getVerificationMethod().getAuthCheckingStrategy(),
+                is(AuthCheckingStrategy.POLL_URL));
+        assertThat(context.getVerificationMethod().getPollUrl(), is(pollUrl));
     }
 }
